@@ -84,18 +84,13 @@ EXTRA_PARAMS = [
 ]
 
 # Handy bounding boxes
-BBOX_TORONTO_CITY = dict(
-    latitude_min=43.57,   # ~Etobicoke Creek / south city edge (approx)
-    latitude_max=43.90,   # ~Steeles Ave N / north city edge (approx)
-    longitude_min=-79.65, # ~Mississauga border / west city edge (approx)
-    longitude_max=-79.12, # ~Scarborough–Pickering line / east city edge (approx)
-)
 
-BBOX_TORONTO_GTA = dict(
-    latitude_min=43.30,   # ~Burlington/Oakville (approx)
-    latitude_max=44.20,   # ~Newmarket/Uxbridge (approx)
-    longitude_min=-80.10, # ~Milton/Campbellville (approx)
-    longitude_max=-78.60, # ~Bowmanville/Courtice (approx)
+# Centered on GTA (~43.75N, -79.35W), expanded to meet the 2x2 min degree rule from the POWER API
+BBOX_TORONTO = dict(
+    latitude_min=42.75,   # ~Hamilton/Oakville (approx)
+    latitude_max=44.75,   # ~Barrie/New Tecumseth (approx)
+    longitude_min=-80.35, # ~Milton/Campbellville (approx)
+    longitude_max=-78.35, # ~Whitby/Bowmanville (approx)
 )
 
 BBOX_ONTARIO = dict(
@@ -531,7 +526,7 @@ class DatasetBundle:
 
 def get_dataset(
     years: int = 5,
-    bbox: Dict[str, float] = BBOX_TORONTO_SMALL,
+    bbox: Dict[str, float] = BBOX_TORONTO,
     target_param: str = TARGET_PARAM,
     extra_params: List[str] = EXTRA_PARAMS,
     drop_allnull_climo: bool = True,
@@ -584,8 +579,7 @@ def get_dataset(
 __all__ = [
     "TARGET_PARAM",
     "EXTRA_PARAMS",
-    "BBOX_TORONTO_CITY",
-    "BBOX_TORONTO_GTA",
+    "BBOX_TORONTO",
     "BBOX_ONTARIO",
     "BBOX_CANADA",
     "split_by_years",
