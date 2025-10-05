@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 # Ensure we can import shared modeling utilities
-ROOT_DIR = Path(__file__).resolve().parents[1]
+ROOT_DIR = BASE_DIR = Path(__file__).parent
 DM_DIR = ROOT_DIR / "data-modeling"
 if str(DM_DIR) not in sys.path:
     sys.path.insert(0, str(DM_DIR))
