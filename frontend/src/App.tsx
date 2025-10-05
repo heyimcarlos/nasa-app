@@ -34,6 +34,8 @@ import {
   DialogTitle,
 } from "./components/ui/dialog";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 interface SearchResult {
   display_name: string;
   lat: string;
@@ -182,7 +184,7 @@ function RainPredictionPage() {
     setIsPredicting(true);
     try {
       const { data } = await axios.post(
-        "http://localhost:5000/api/predict",
+        `${API_URL}/api/predict`,
         {
           lat: latitude,
           lon: longitude,

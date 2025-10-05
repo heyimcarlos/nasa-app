@@ -1,3 +1,4 @@
+dask
 flask
 flask-cors
 joblib
