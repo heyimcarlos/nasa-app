@@ -341,20 +341,6 @@ function RainPredictionPage() {
                           )}
                         </div>
                       </div>
-                      {locationName && (
-                        <div className="rounded-md bg-muted p-3 sm:p-2">
-                          <p className="text-sm sm:text-xs font-medium">
-                            Selected Location:
-                          </p>
-                          <p className="text-sm sm:text-xs text-muted-foreground">
-                            {locationName}
-                          </p>
-                          <p className="text-sm sm:text-xs text-muted-foreground">
-                            {latitude.toFixed(4)}°N,{" "}
-                            {Math.abs(longitude).toFixed(4)}°W
-                          </p>
-                        </div>
-                      )}
                     </div>
                   </TabsContent>
 
