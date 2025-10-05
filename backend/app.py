@@ -40,6 +40,10 @@ try:
         DM_DIR / 'artifacts/mlp_rain_model.pkl',
         DM_DIR / 'artifacts/model.pkl',
     ]
+    
+    print("Looking for model bundle in:", [str(p) for p in candidates])
+    
+    
     model_path = next((p for p in candidates if p.exists()), None)
     if model_path is None:
         logging.error("No model bundle found in artifacts directory. Train and save a bundle first.")
