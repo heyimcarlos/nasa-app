@@ -1,9 +1,20 @@
 import logging
+import sys
+from pathlib import Path
 import joblib
 import pandas as pd
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from utils.config import SERIALIZED_DIR, DATA_DIR
+from utils.config import SERIALIZED_DIR
+
+# Ensure we can import shared modeling utilities
+ROOT_DIR = Path(__file__).resolve().parents[1]
+DM_DIR = ROOT_DIR / "data-modeling"
+if str(DM_DIR) not in sys.path:
+    sys.path.insert(0, str(DM_DIR))
+
+from inference import predict_precip_mm  # type: ignore
+from power_data import get_dataset, EXTRA_PARAMS, TARGET_PARAM  # type: ignore
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -12,78 +23,64 @@ app = Flask(__name__)
 CORS(app, resources={
     r"/api/*": {
         "origins": [
-            "http://localhost:5000"  # Keep local development working
+            "http://localhost:3000"  # Keep local development working
         ],
         "methods": ["POST", "OPTIONS"],
         "allow_headers": ["Content-Type"]
     }
 })
 
-# Load the model and pipeline artifacts
+# Load the model bundle and datasets once at startup
+model_bundle = None
+ds = None
+ds_climo = None
 try:
-    model_path = SERIALIZED_DIR / 'model.pkl'
-    pipeline_path = SERIALIZED_DIR / 'preprocessing_pipeline.pkl'
-
-    if not model_path.exists() or not pipeline_path.exists():
-        model = None
-        pipeline = None
-        logging.error("Model or pipeline file not found. Please train the model first using model.py.")
+    # Prefer MLP model bundle; fallback to baseline if needed
+    candidates = [
+        SERIALIZED_DIR / 'rain_model_v1.pkl',
+        SERIALIZED_DIR / 'mlp_rain_model.pkl',
+        SERIALIZED_DIR / 'model.pkl',
+    ]
+    model_path = next((p for p in candidates if p.exists()), None)
+    if model_path is None:
+        logging.error("No model bundle found in artifacts directory. Train and save a bundle first.")
     else:
-        model = joblib.load(model_path)
-        pipeline = joblib.load(pipeline_path)
-        logging.info("Model, and pipeline loaded successfully.")
+        model_bundle = joblib.load(model_path)
+        logging.info(f"Model bundle loaded from {model_path.name}.")
 
+        # Open datasets via shared data loader (uses local cache if available)
+        bbox = model_bundle.get('bbox')
+        target_param = model_bundle.get('target_param', TARGET_PARAM)
+        bundle = get_dataset(years=5, bbox=bbox, target_param=target_param, extra_params=EXTRA_PARAMS)
+        ds = bundle.ds
+        ds_climo = bundle.ds_climo
+        logging.info("Datasets loaded for inference.")
 except Exception as e:
-    logging.error(f"Error loading model artifacts or columns: {e}")
-    model = None
-    pipeline = None
+    logging.error(f"Error loading model bundle or datasets: {e}")
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
-    """API endpoint to make predictions."""
-    if not model or not pipeline:
-        return jsonify({"error": "Model or pipeline configuration not loaded. Check server logs."}), 500
+    """Predict precipitation metrics for a given lat/lon/date.
 
+    Request JSON:
+      { "lat": 43.65, "lon": -79.38, "date": "2025-11-15" }
+
+    Response JSON:
+      { "p_rain": float, "amount_if_rain_mm": float, "expected_mm": float }
+    """
+    if model_bundle is None or ds is None or ds_climo is None:
+        return jsonify({"error": "Model or datasets not loaded. Check server logs."}), 500
     try:
-        # Get data from POST request
-        data = request.get_json(force=True)
-        logging.info(f"Received data for prediction: {data}")
+        payload = request.get_json(force=True) or {}
+        lat = float(payload.get("lat"))
+        lon = float(payload.get("lon"))
+        date_str = str(payload.get("date"))
+        if not date_str:
+            raise ValueError("'date' is required in ISO format, e.g., YYYY-MM-DD")
 
-        # Convert data into pandas DataFrame
-        input_df = pd.DataFrame(data)
-
-        logging.info(f"Input DataFrame columns after reordering & selection: {input_df.columns.tolist()}")
-        logging.info(f"Input DataFrame shape: {input_df.shape}")
-
-        # Apply the preprocessing pipeline
-        processed_input = pipeline.transform(input_df)
-
-        # If 'processed_input' is a DataFrame, log its columns
-        if isinstance(processed_input, pd.DataFrame):
-            logging.info(f"Processed DataFrame columns: {processed_input.columns.tolist()}")
-        logging.info(f"Processed data shape for model: {processed_input.shape}")
-
-        # Make prediction
-        prediction = model.predict(processed_input)
-        prediction_proba = None
-        if hasattr(model, "predict_proba"):
-            try:
-                # Get probability for the positive class (Fatal)
-                prediction_proba = model.predict_proba(processed_input)[:, 1]
-                prediction_proba = prediction_proba.tolist()  # Convert to list for JSON
-                logging.info("Prediction probabilities calculated.")
-            except Exception as e:
-                logging.warning(f"Could not get probability predictions: {e}")
-
-        logging.info(f"Prediction result: {prediction.tolist()}")
-
-        # Return prediction as JSON response
-        response_payload = {'prediction': prediction.tolist()}
-        if prediction_proba is not None:
-            response_payload['prediction_proba_fatal'] = prediction_proba
-
-        return jsonify(response_payload)
-
+        logging.info(f"Predict request: lat={lat}, lon={lon}, date={date_str}")
+        result = predict_precip_mm(model_bundle, ds, ds_climo, lat, lon, date_str)
+        return jsonify(result)
     except Exception as e:
         logging.error(f"Error during prediction: {e}", exc_info=True)
         return jsonify({"error": f"An error occurred during prediction: {str(e)}"}), 400
