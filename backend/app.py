@@ -5,7 +5,6 @@ import joblib
 import pandas as pd
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from utils.config import SERIALIZED_DIR
 
 # Ensure we can import shared modeling utilities
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -37,9 +36,9 @@ ds_climo = None
 try:
     # Prefer MLP model bundle; fallback to baseline if needed
     candidates = [
-        SERIALIZED_DIR / 'rain_model_v1.pkl',
-        SERIALIZED_DIR / 'mlp_rain_model.pkl',
-        SERIALIZED_DIR / 'model.pkl',
+        DM_DIR / 'artifacts/rain_model_v1.pkl',
+        DM_DIR / 'artifacts/mlp_rain_model.pkl',
+        DM_DIR / 'artifacts/model.pkl',
     ]
     model_path = next((p for p in candidates if p.exists()), None)
     if model_path is None:
