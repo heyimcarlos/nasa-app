@@ -33,7 +33,7 @@ from sklearn.preprocessing import StandardScaler
 from power_data import (
     TARGET_PARAM,
     EXTRA_PARAMS,
-    BBOX_TORONTO_SMALL,
+    BBOX_TORONTO_CITY,
     get_dataset,
     split_by_years,
 )
@@ -48,7 +48,7 @@ def rmse(y_true, y_pred) -> float:
 
 def main():
     # === Load the shared dataset (one-liner) ===
-    bundle = get_dataset(years=5, bbox=BBOX_TORONTO_SMALL, target_param=TARGET_PARAM, extra_params=EXTRA_PARAMS)
+    bundle = get_dataset(years=5, bbox=BBOX_TORONTO_CITY, target_param=TARGET_PARAM, extra_params=EXTRA_PARAMS)
 
     data = bundle.data
     climo_cols = bundle.climo_cols
@@ -152,7 +152,7 @@ def main():
         "X_cols": X_cols,
         "climo_cols": climo_cols,
         "target_param": TARGET_PARAM,
-        "bbox": BBOX_TORONTO_SMALL,
+        "bbox": BBOX_TORONTO_CITY,
         "feature_version": 1,  # bump when feature engineering changes
     }
     out_path = ARTIFACTS_DIR / "rain_model_v1.pkl"

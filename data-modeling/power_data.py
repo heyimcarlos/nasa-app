@@ -84,18 +84,32 @@ EXTRA_PARAMS = [
 ]
 
 # Handy bounding boxes
-BBOX_CANADA = dict(
-    latitude_min=41.0,
-    latitude_max=83.5,
-    longitude_min=-141.0,
-    longitude_max=-52.5,
+BBOX_TORONTO_CITY = dict(
+    latitude_min=43.57,   # ~Etobicoke Creek / south city edge (approx)
+    latitude_max=43.90,   # ~Steeles Ave N / north city edge (approx)
+    longitude_min=-79.65, # ~Mississauga border / west city edge (approx)
+    longitude_max=-79.12, # ~Scarborough–Pickering line / east city edge (approx)
 )
 
-BBOX_TORONTO_SMALL = dict(
-    latitude_min=42.5,
-    latitude_max=44.5,
-    longitude_min=-80.5,
-    longitude_max=-78.5,
+BBOX_TORONTO_GTA = dict(
+    latitude_min=43.30,   # ~Burlington/Oakville (approx)
+    latitude_max=44.20,   # ~Newmarket/Uxbridge (approx)
+    longitude_min=-80.10, # ~Milton/Campbellville (approx)
+    longitude_max=-78.60, # ~Bowmanville/Courtice (approx)
+)
+
+BBOX_ONTARIO = dict(
+    latitude_min=41.6,    # ~Middle Island / Point Pelee (approx)
+    latitude_max=56.9,    # ~Hudson Bay coast / Cape Henrietta Maria (approx)
+    longitude_min=-95.2,  # ~Manitoba border (approx)
+    longitude_max=-74.3,  # ~Ottawa River / near QC border (approx)
+)
+
+BBOX_CANADA = dict(
+    latitude_min=41.0,    # ~Southern ON border / Point Pelee area (approx)
+    latitude_max=83.5,    # ~High Arctic, Ellesmere Island (approx)
+    longitude_min=-141.0, # ~Yukon–Alaska border (approx)
+    longitude_max=-52.5,  # ~Newfoundland & Labrador Atlantic coast (approx)
 )
 
 # -----------------
@@ -447,26 +461,6 @@ def make_training_table(ds: xr.Dataset, ds_climo: xr.Dataset, target_var: str = 
     return data
 
 
-def time_split(data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Split a tidy DataFrame into (train, val, test) by whole years (365 days only).
-
-    Policy:
-      - train = all but the last 2 full years
-      - val   = 2nd to last full year
-      - test  = last full year
-    """
-    days_per_year = data.groupby("year")["time"].nunique().sort_index()
-    full_years = days_per_year[days_per_year == 365].index.tolist()
-    assert len(full_years) >= 3, "Need at least 3 full years to split."
-    test_year, val_year = full_years[-1], full_years[-2]
-    train_years = full_years[:-2]
-
-    train_df = data[data["year"].isin(train_years)].reset_index(drop=True)
-    val_df = data[data["year"] == val_year].reset_index(drop=True)
-    test_df = data[data["year"] == test_year].reset_index(drop=True)
-    return train_df, val_df, test_df
-
-
 def split_by_years(
     data: pd.DataFrame,
     train: float = 0.6,
@@ -588,22 +582,12 @@ def get_dataset(
     )
 
 __all__ = [
-    "POWER_BASE",
-    "CACHE",
     "TARGET_PARAM",
     "EXTRA_PARAMS",
+    "BBOX_TORONTO_CITY",
+    "BBOX_TORONTO_GTA",
+    "BBOX_ONTARIO",
     "BBOX_CANADA",
-    "BBOX_TORONTO_SMALL",
-    "DatasetBundle",
-    "last_n_years_dates",
-    "year_slices",
-    "tile_bbox_no_overlap",
-    "build_regional_url",
-    "collect_paths_for_param",
-    "get_target_dataset",
-    "get_climatology_dataset",
-    "make_training_table",
-    "time_split",
     "split_by_years",
     "get_dataset",
 ]
