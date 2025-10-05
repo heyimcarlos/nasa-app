@@ -12,3 +12,4 @@ nasa/nasa-app/data-modeling/artifacts/
 *.nc
 *.zarr
 *.pkl
+*.csv

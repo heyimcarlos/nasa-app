@@ -1,0 +1,17 @@
+glob2
+xarray
+pandas
+numpy
+matplotlib
+scikit-learn
+seaborn
+boruta
+requests
+flask
+dotenv
+netCDF4
+h5netcdf
+dask
+joblib
+xgboost
+shap

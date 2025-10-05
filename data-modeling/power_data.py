@@ -65,18 +65,18 @@ EXTRA_PARAMS = [
   "PW",                       # Water Vapor Column (cm)
   # Extended parameters - could be enabled later if necessary
   # # Clouds
-  # "CLOUD_AMT",                # Cloud Amount (tenths)
+  "CLOUD_AMT",                # Cloud Amount (tenths)
   # # Longwave
-  # "ALLSKY_SFC_LW_DWN",        # All Sky Surface Longwave Down
+  "ALLSKY_SFC_LW_DWN",        # All Sky Surface Longwave Down
   # # Soil wetness
-  # "GWETTOP",                 # Top Layer Soil Wetness (unitless)
-  # "GWETROOT",                # Root Zone Soil Wetness (unitless)
-  # "GWETPROF",                # Profile Soil Wetness (unitless)
+  "GWETTOP",                 # Top Layer Soil Wetness (unitless)
+  "GWETROOT",                # Root Zone Soil Wetness (unitless)
+  "GWETPROF",                # Profile Soil Wetness (unitless)
   # # Top-of-atmosphere solar / geometry
-  # "TOA_SW_DWN",              # Top of Atmosphere Shortwave Down (W/m^2)
-  # "SZA",                     # Solar Zenith Angle (degrees)
+  "TOA_SW_DWN",              # Top of Atmosphere Shortwave Down (W/m^2)
+  "SZA",                     # Solar Zenith Angle (degrees)
   # # Aerosols
-  # "AOD_55",                  # Aerosol Optical Depth at 550 nm (unitless)
+  "AOD_55",                  # Aerosol Optical Depth at 550 nm (unitless)
 ]
 
 # Handy bounding boxes
