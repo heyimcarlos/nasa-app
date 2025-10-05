@@ -1,33 +1,19 @@
-# logreg_randomforest.py
+# mlp.py
 # -----------------------------------------------------------------------------
-# Baseline 2-stage model:
-#   1) Logistic Regression -> rain / no-rain probability
-#   2) Random Forest Regressor on log1p(rain mm) for rainy days
-# Consumes the shared dataset via power_data.get_dataset(...), evaluates,
-# and writes a single .pkl artifact with everything needed for serving.
-#
-# Dependencies:
-#   pip install scikit-learn joblib
+# Multi-layer Perceptron (MLP) classifier for rain/no-rain prediction.
 # -----------------------------------------------------------------------------
-
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, Any
-
 import joblib
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor
+import pandas as pd
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (
-    brier_score_loss,
-    mean_absolute_error,
-    roc_auc_score,
-)
+from sklearn.metrics import (brier_score_loss, mean_absolute_error, roc_auc_score)
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-
+from sklearn.neural_network import MLPClassifier, MLPRegressor
 from power_data import (TARGET_PARAM, EXTRA_PARAMS, BBOX_TORONTO, get_dataset, split_by_years)
 from common import (
     rmse,
@@ -38,11 +24,53 @@ from common import (
     baseline_expected_mm as baseline_expected_mm_common,
     combined_expected_mm as combined_expected_mm_common,
 )
-from inference import predict_precip_mm as shared_predict_precip_mm  # noqa: F401 (imported for external use)
+from inference import predict_precip_mm as shared_predict_precip_mm 
 
 BASE_DIR = Path(__file__).resolve().parent              # → nasa-app/data-modeling
 ARTIFACTS_DIR = BASE_DIR / "artifacts"
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+
+def build_mlp_classifier(
+    hidden_layer_sizes=(64, 32),
+    alpha=1e-4,
+    learning_rate_init=1e-3,
+    max_iter=300,
+    random_state=42,
+):
+    """Construct a readable MLP classifier pipeline.
+
+    Pipeline layout:
+      - SimpleImputer: fill missing values with feature-wise median
+      - StandardScaler: zero-mean/unit-variance features (benefits neural nets)
+      - MLPClassifier: small MLP suitable for tabular classification
+    """
+    mlp = MLPClassifier(
+        hidden_layer_sizes=hidden_layer_sizes,
+        activation="relu",
+        solver="adam",
+        alpha=alpha,
+        batch_size="auto",
+        learning_rate="constant",
+        learning_rate_init=learning_rate_init,
+        max_iter=max_iter,
+        shuffle=True,
+        random_state=random_state,
+        early_stopping=True,
+        validation_fraction=0.1,
+        n_iter_no_change=15,
+        beta_1=0.9,
+        beta_2=0.999,
+        epsilon=1e-8,
+        verbose=False,
+    )
+
+    return Pipeline(
+        steps=[
+            ("imp", SimpleImputer(strategy="median")),
+            ("scal", StandardScaler(with_mean=True)),
+            ("mlp", mlp),
+        ]
+    )
 
 def main():
     # === Load the shared dataset (one-liner) ===
@@ -71,27 +99,39 @@ def main():
 
     print(f"Features: {len(X_cols)}  | Train rows: {len(train_df):,}  | Rain-only rows: {len(Xtr_r):,}")
 
-    # === Stage 1 — rain/no-rain classifier ===
-    clf = Pipeline(
-        steps=[
-            ("imp", SimpleImputer(strategy="median")),
-            ("scal", StandardScaler(with_mean=False)),
-            ("logit", LogisticRegression(max_iter=1000, class_weight="balanced")),
-        ]
-    ).fit(Xtr, ytr)
+    # === Stage 1 — rain/no-rain classifier (Multi-layer Perceptron) ===
+    clf = build_mlp_classifier().fit(Xtr, ytr)
 
     p_va = clf.predict_proba(Xva)[:, 1]
     p_te = clf.predict_proba(Xte)[:, 1]
-    print("Classifier — Val AUC:", round(roc_auc_score(yva, p_va), 3))
-    print("Classifier — Val Brier:", round(brier_score_loss(yva, p_va), 4))
-    print("Classifier — Test AUC:", round(roc_auc_score(yte, p_te), 3))
-    print("Classifier — Test Brier:", round(brier_score_loss(yte, p_te), 4))
+    print("NN Classifier — Val AUC:", round(roc_auc_score(yva, p_va), 3))
+    print("NN Classifier — Val Brier:", round(brier_score_loss(yva, p_va), 4))
+    print("NN Classifier — Test AUC:", round(roc_auc_score(yte, p_te), 3))
+    print("NN Classifier — Test Brier:", round(brier_score_loss(yte, p_te), 4))
 
     # === Stage 2 — regressor on rainy rows (log1p scale) ===
     reg = Pipeline(
         steps=[
             ("imp", SimpleImputer(strategy="median")),
-            ("rf", RandomForestRegressor(n_estimators=200, random_state=42, n_jobs=-1)),
+            ("scal", StandardScaler(with_mean=True)),
+            ("mlpr", MLPRegressor(
+                hidden_layer_sizes=(64, 32),
+                activation="relu",
+                solver="adam",
+                alpha=1e-4,
+                learning_rate="constant",
+                learning_rate_init=1e-3,
+                max_iter=500,
+                shuffle=True,
+                random_state=42,
+                early_stopping=True,
+                validation_fraction=0.1,
+                n_iter_no_change=15,
+                beta_1=0.9,
+                beta_2=0.999,
+                epsilon=1e-8,
+                verbose=False,
+            )),
         ]
     ).fit(Xtr_r, ytr_r)
 
@@ -128,66 +168,9 @@ def main():
         "bbox": BBOX_TORONTO,
         "feature_version": 1,  # bump when feature engineering changes
     }
-    out_path = ARTIFACTS_DIR / "rain_model_v1.pkl"
+    out_path = ARTIFACTS_DIR / "mlp_rain_model.pkl"
     joblib.dump(bundle_to_save, out_path)
     print(f"\nSaved model bundle → {out_path.resolve()}")
-
-    # Optional: one-off inference helper (kept here for dev use)
-    # from logreg_randomforest import predict_precip_mm
-    # print(predict_precip_mm(bundle_to_save, ds, ds_climo, 43.65, -79.38, "2025-11-15"))
-
-# ---- Small utility for Flask-side inference (kept here for convenience) ----
-def predict_precip_mm(
-    model_bundle: Dict[str, Any],
-    ds,           # xarray Dataset for TARGET_PARAM (grid reference)
-    ds_climo,     # xarray Dataset with *_clim vars aligned to ds grid
-    lat: float,
-    lon: float,
-    date_str: str,
-) -> Dict[str, float]:
-    """Given (lat, lon, date), return predictions using a saved model bundle.
-
-    Returns dict with:
-      - p_rain: probability of precipitation - X% chance of rain
-      - amount_if_rain_mm: predicted amount conditional on rain - Y mm total if it rains
-      - expected_mm: p_rain * amount_if_rain_mm - average you'd plan for ≈ Z mm
-    """
-    clf = model_bundle["clf"]
-    reg = model_bundle["reg"]
-    X_cols = model_bundle["X_cols"]
-
-    lat_name = "latitude" if "latitude" in ds.coords else ("lat" if "lat" in ds.coords else None)
-    lon_name = "longitude" if "longitude" in ds.coords else ("lon" if "lon" in ds.coords else None)
-    if lat_name is None or lon_name is None:
-        raise ValueError("Could not locate lat/lon coords in ds.")
-
-    dt = pd.to_datetime(date_str)
-    doy = int(dt.strftime("%j"))
-    row = {
-        "lat": float(ds[lat_name].sel({lat_name: lat}, method="nearest").values),
-        "lon": float(ds[lon_name].sel({lon_name: lon}, method="nearest").values),
-        "doy": doy,
-        "doy_sin": np.sin(2 * np.pi * doy / 365.0),
-        "doy_cos": np.cos(2 * np.pi * doy / 365.0),
-    }
-
-    cl = ds_climo.sel(
-        doy=doy,
-        **{lat_name: row["lat"], lon_name: row["lon"]},
-        method="nearest",
-    )
-    for v in ds_climo.data_vars:
-        row[v] = float(cl[v].values)
-
-    X = pd.DataFrame([row])[X_cols]
-    p = float(clf.predict_proba(X)[:, 1])
-    amt = float(np.expm1(reg.predict(X)))
-
-    return {
-        "p_rain": max(0.0, min(1.0, p)),
-        "amount_if_rain_mm": max(0.0, amt),
-        "expected_mm": max(0.0, p * amt),
-    }
 
 if __name__ == "__main__":
     main()
