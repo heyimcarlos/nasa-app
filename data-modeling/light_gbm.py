@@ -113,7 +113,7 @@ def main():
 
     # === Save model bundle for serving ===
     bundle_to_save = {"clf": clf, "reg": reg, "X_cols": X_cols, "bundle_info": bundle}
-    out_path = ARTIFACTS_DIR / "rain_model_lgbm_boruta_v1.joblib"
+    out_path = ARTIFACTS_DIR / "rain_model_lgbm_boruta_v1.pkl"
     joblib.dump(bundle_to_save, out_path)
     print(f"\nSaved model bundle -> {out_path.resolve()}")
 

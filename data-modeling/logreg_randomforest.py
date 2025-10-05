@@ -46,7 +46,7 @@ ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
 def main():
     # === Load the shared dataset (one-liner) ===
-    bundle = get_dataset(years=10, bbox=BBOX_TORONTO, target_param=TARGET_PARAM, extra_params=EXTRA_PARAMS)
+    bundle = get_dataset(years=5, bbox=BBOX_TORONTO, target_param=TARGET_PARAM, extra_params=EXTRA_PARAMS)
 
     data = bundle.data
     climo_cols = bundle.climo_cols
