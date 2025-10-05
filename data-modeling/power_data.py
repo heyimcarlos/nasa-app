@@ -9,10 +9,6 @@
 #
 # Dependencies:
 #   pip install requests numpy pandas xarray
-#   Optional speedups:
-#     - pip install netCDF4            (better NetCDF backend)
-#     - pip install dask               (lazy chunking)
-#     - pip install zarr               (fast mosaic cache)
 # -----------------------------------------------------------------------------
 
 from __future__ import annotations
@@ -263,7 +259,7 @@ def _engine() -> str:
     return "scipy"
 
 
-def open_mosaic(paths: List[Path], chunks: Optional[str] = "auto") -> xr.Dataset:
+def open_mosaic(paths: List[Path]) -> xr.Dataset:
     """Open many NetCDF files and merge by coordinates into a single xarray Dataset.
     """
     return xr.open_mfdataset(
@@ -301,15 +297,6 @@ def guess_lat_lon_coords(ds: xr.Dataset) -> Tuple[str, str]:
     if not lat or not lon:
         raise ValueError(f"Could not find lat/lon in coords: {list(ds.coords)}")
     return lat, lon
-
-
-def _zarr_available() -> bool:
-    """Return True if the `zarr` package is importable; False otherwise."""
-    try:
-        import zarr  # noqa: F401
-        return True
-    except Exception:
-        return False
 
 
 def _mosaic_key(param: str, bbox: Dict[str, float], start: str, end: str) -> str:
