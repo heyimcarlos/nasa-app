@@ -52,36 +52,35 @@ TARGET_PARAM = "PRECTOTCORR"  # precipitation corrected (mm/day)
 
 # Choose extra variables to summarize as climatology features
 EXTRA_PARAMS = [
-  # Moisture & temp
-  "RH2M",                     # Relative Humidity at 2 Meters (%)
-  "T2M",                      # Temperature at 2 Meters (°C)
-  "T2M_MAX",                  # Maximum Temperature at 2 Meters (°C)
-  "T2M_MIN",                  # Minimum Temperature at 2 Meters (°C)
-  "T2MDEW",                   # Dew Point Temperature at 2 Meters (°C)
-  "QV2M",                     # Specific Humidity at 2 Meters (kg/kg)
-  # Pressure
-  "PS",                       # Surface Pressure (kPa)
-  "SLP",                      # Sea Level Pressure (kPa)
-  # Wind
-  "WS10M",                    # Wind Speed at 10 Meters (m/s)
-  # Radiation
-  "ALLSKY_SFC_SW_DWN",        # All Sky Surface Shortwave Down
-  # Water vapor column
-  "PW",                       # Water Vapor Column (cm)
-  # Extended parameters - could be enabled later if necessary
-  # # Clouds
-  # "CLOUD_AMT",                # Cloud Amount (tenths)
-  # # Longwave
-  # "ALLSKY_SFC_LW_DWN",        # All Sky Surface Longwave Down
-  # # Soil wetness
-  # "GWETTOP",                 # Top Layer Soil Wetness (unitless)
-  # "GWETROOT",                # Root Zone Soil Wetness (unitless)
-  # "GWETPROF",                # Profile Soil Wetness (unitless)
-  # # Top-of-atmosphere solar / geometry
-  # "TOA_SW_DWN",              # Top of Atmosphere Shortwave Down (W/m^2)
-  # "SZA",                     # Solar Zenith Angle (degrees)
-  # # Aerosols
-  # "AOD_55",                  # Aerosol Optical Depth at 550 nm (unitless)
+    # Moisture & temp
+    "RH2M",  # Relative Humidity at 2 Meters (%)
+    "T2M",  # Temperature at 2 Meters (°C)
+    "T2M_MAX",  # Maximum Temperature at 2 Meters (°C)
+    "T2M_MIN",  # Minimum Temperature at 2 Meters (°C)
+    "T2MDEW",  # Dew Point Temperature at 2 Meters (°C)
+    "QV2M",  # Specific Humidity at 2 Meters (kg/kg)
+    # Pressure
+    "PS",  # Surface Pressure (kPa)
+    "SLP",  # Sea Level Pressure (kPa)
+    # Wind
+    "WS10M",  # Wind Speed at 10 Meters (m/s)
+    # Radiation
+    "ALLSKY_SFC_SW_DWN",  # All Sky Surface Shortwave Down
+    # Water vapor column
+    "PW",  # Water Vapor Column (cm)
+    # Clouds
+    "CLOUD_AMT",                # Cloud Amount (tenths)
+    # Longwave
+    "ALLSKY_SFC_LW_DWN",        # All Sky Surface Longwave Down
+    # Soil wetness
+    "GWETTOP",  # Top Layer Soil Wetness (unitless)
+    "GWETROOT",                # Root Zone Soil Wetness (unitless)
+    "GWETPROF",                # Profile Soil Wetness (unitless)
+    # Top-of-atmosphere solar / geometry
+    "TOA_SW_DWN",              # Top of Atmosphere Shortwave Down (W/m^2)
+    "SZA",                     # Solar Zenith Angle (degrees)
+    # Aerosols
+    "AOD_55",                  # Aerosol Optical Depth at 550 nm (unitless)
 ]
 
 # Handy bounding boxes
