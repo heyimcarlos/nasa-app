@@ -1,58 +1,80 @@
-"use client"
+"use client";
 
-import { useState, useCallback, useRef, useEffect } from "react"
-import { Cloud, CloudRain, Search, MapPin, Calendar, Droplets, Map, Navigation, Maximize2 } from "lucide-react"
-import { Button } from "./components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card"
-import { Input } from "./components/ui/input"
-import { Label } from "./components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs"
-import { InteractiveMap } from "./components/interactive-map"
-import { ThemeToggle } from "./components/theme-toggle"
-import { ThemeProvider } from "./components/theme-provider"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./components/ui/dialog"
+import { useState, useCallback, useRef, useEffect } from "react";
+import axios from "axios";
+import {
+  Cloud,
+  CloudRain,
+  Search,
+  MapPin,
+  Calendar,
+  Droplets,
+  Map,
+  Navigation,
+  Maximize2,
+} from "lucide-react";
+import { Button } from "./components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./components/ui/card";
+import { Input } from "./components/ui/input";
+import { Label } from "./components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
+import { InteractiveMap } from "./components/interactive-map";
+import { ThemeToggle } from "./components/theme-toggle";
+import { ThemeProvider } from "./components/theme-provider";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "./components/ui/dialog";
 
 interface SearchResult {
-  display_name: string
-  lat: string
-  lon: string
+  display_name: string;
+  lat: string;
+  lon: string;
 }
 
 interface Prediction {
-  p_rain: number
-  amount_if_rain_mm: number
-  expected_mm: number
+  p_rain: number;
+  amount_if_rain_mm: number;
+  expected_mm: number;
 }
 
 function RainPredictionPage() {
-  const [latitude, setLatitude] = useState(39.8283)
-  const [longitude, setLongitude] = useState(-98.5795)
+  const [latitude, setLatitude] = useState(39.8283);
+  const [longitude, setLongitude] = useState(-98.5795);
   const [date, setDate] = useState(() => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    return tomorrow.toISOString().split("T")[0]
-  })
-  const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
-  const [isSearching, setIsSearching] = useState(false)
-  const [locationName, setLocationName] = useState("")
-  const [prediction, setPrediction] = useState<Prediction | null>(null)
-  const [isPredicting, setIsPredicting] = useState(false)
-  const [isFetchingLocation, setIsFetchingLocation] = useState(false)
-  const [isMapDialogOpen, setIsMapDialogOpen] = useState(false)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split("T")[0];
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [locationName, setLocationName] = useState("");
+  const [prediction, setPrediction] = useState<Prediction | null>(null);
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [isMapDialogOpen, setIsMapDialogOpen] = useState(false);
 
-  const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchLocationName = useCallback(async (lat: number, lng: number) => {
     if (fetchTimeoutRef.current) {
-      clearTimeout(fetchTimeoutRef.current)
+      clearTimeout(fetchTimeoutRef.current);
     }
 
     fetchTimeoutRef.current = setTimeout(async () => {
-      setIsFetchingLocation(true)
+      setIsFetchingLocation(true);
       try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         const response = await fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`,
@@ -61,130 +83,141 @@ function RainPredictionPage() {
               "User-Agent": "ProbiliSky Weather App",
             },
             signal: controller.signal,
-          },
-        )
+          }
+        );
 
-        clearTimeout(timeoutId)
+        clearTimeout(timeoutId);
 
         if (response.ok) {
-          const data = await response.json()
-          setLocationName(data.display_name || "")
+          const data = await response.json();
+          setLocationName(data.display_name || "");
         } else {
-          setLocationName("")
+          setLocationName("");
         }
       } catch (error) {
         if (error instanceof Error && error.name !== "AbortError") {
-          setLocationName("")
+          setLocationName("");
         }
       } finally {
-        setIsFetchingLocation(false)
+        setIsFetchingLocation(false);
       }
-    }, 800)
-  }, [])
+    }, 800);
+  }, []);
 
   useEffect(() => {
     return () => {
       if (fetchTimeoutRef.current) {
-        clearTimeout(fetchTimeoutRef.current)
+        clearTimeout(fetchTimeoutRef.current);
       }
-    }
-  }, [])
+    };
+  }, []);
 
   const handleLocationChange = useCallback(
     (lat: number, lng: number) => {
-      setLatitude(lat)
-      setLongitude(lng)
-      fetchLocationName(lat, lng)
+      setLatitude(lat);
+      setLongitude(lng);
+      fetchLocationName(lat, lng);
     },
-    [fetchLocationName],
-  )
+    [fetchLocationName]
+  );
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return
+    if (!searchQuery.trim()) return;
 
-    setIsSearching(true)
+    setIsSearching(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=us,ca&limit=5`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          searchQuery
+        )}&countrycodes=us,ca&limit=5`,
         {
           headers: {
             "User-Agent": "ProbiliSky Weather App",
           },
-        },
-      )
+        }
+      );
 
       if (response.ok) {
-        const data = await response.json()
-        setSearchResults(data)
+        const data = await response.json();
+        setSearchResults(data);
       }
     } catch (error) {
-      console.error("Search error:", error)
+      console.error("Search error:", error);
     } finally {
-      setIsSearching(false)
+      setIsSearching(false);
     }
-  }
+  };
 
   const handleSelectResult = (result: SearchResult) => {
-    const lat = Number.parseFloat(result.lat)
-    const lng = Number.parseFloat(result.lon)
-    const clampedLat = Math.max(25.0625, Math.min(52.9375, lat))
-    const clampedLng = Math.max(-124.9375, Math.min(-67.0625, lng))
-    setLatitude(clampedLat)
-    setLongitude(clampedLng)
-    setLocationName(result.display_name)
-    setSearchResults([])
-    setSearchQuery("")
-  }
+    const lat = Number.parseFloat(result.lat);
+    const lng = Number.parseFloat(result.lon);
+    const clampedLat = Math.max(25.0625, Math.min(52.9375, lat));
+    const clampedLng = Math.max(-124.9375, Math.min(-67.0625, lng));
+    setLatitude(clampedLat);
+    setLongitude(clampedLng);
+    setLocationName(result.display_name);
+    setSearchResults([]);
+    setSearchQuery("");
+  };
 
   const handleLatitudeChange = (value: string) => {
-    const num = Number.parseFloat(value)
+    const num = Number.parseFloat(value);
     if (!isNaN(num)) {
-      const clamped = Math.max(25.0625, Math.min(52.9375, num))
-      setLatitude(clamped)
-      fetchLocationName(clamped, longitude)
+      const clamped = Math.max(25.0625, Math.min(52.9375, num));
+      setLatitude(clamped);
+      fetchLocationName(clamped, longitude);
     }
-  }
+  };
 
   const handleLongitudeChange = (value: string) => {
-    const num = Number.parseFloat(value)
+    const num = Number.parseFloat(value);
     if (!isNaN(num)) {
-      const clamped = Math.max(-124.9375, Math.min(-67.0625, num))
-      setLongitude(clamped)
-      fetchLocationName(latitude, clamped)
+      const clamped = Math.max(-124.9375, Math.min(-67.0625, num));
+      setLongitude(clamped);
+      fetchLocationName(latitude, clamped);
     }
-  }
+  };
 
   const handlePredictRain = async () => {
-    setIsPredicting(true)
+    setIsPredicting(true);
     try {
-      const response = await fetch("http://localhost:5000/api/predict", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const { data } = await axios.post(
+        "http://localhost:5000/api/predict",
+        {
           lat: latitude,
           lon: longitude,
           date: date,
-        }),
-      })
-      if (!response.ok) {
-        throw new Error("Failed to fetch prediction")
-      }
-      const data = await response.json()
-      setPrediction(data)
-    } catch (error) {
-      console.error("Prediction error:", error)
-      setPrediction(null)
+        },
+        {
+          headers: { "Content-Type": "application/json" },
+          timeout: 15000,
+          withCredentials: false,
+        }
+      );
+      setPrediction(data);
+    } catch (error: any) {
+      // Surface useful error details in dev
+      const status = error?.response?.status;
+      const payload = error?.response?.data;
+      console.error(
+        "Prediction error:",
+        status,
+        payload || error?.message || error
+      );
+      setPrediction(null);
     } finally {
-      setIsPredicting(false)
+      setIsPredicting(false);
     }
-  }
+  };
 
   const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr)
-    return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
-  }
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       <header className="shrink-0 border-b">
@@ -202,7 +235,9 @@ function RainPredictionPage() {
           <div className="flex h-full flex-col gap-4 overflow-y-auto overflow-x-hidden border-r p-4 sm:p-6">
             <Card className="flex min-h-0 flex-1 flex-col">
               <CardHeader className="shrink-0 pb-3 sm:pb-4">
-                <CardTitle className="text-base sm:text-lg">Location Selection</CardTitle>
+                <CardTitle className="text-base sm:text-lg">
+                  Location Selection
+                </CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
                   Choose your preferred method to select a location
                 </CardDescription>
@@ -210,9 +245,12 @@ function RainPredictionPage() {
                   <div className="mt-2 flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 sm:px-2 sm:py-1.5">
                     <MapPin className="h-4 w-4 sm:h-3 sm:w-3 shrink-0 text-primary" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm sm:text-xs font-medium">{locationName}</p>
+                      <p className="truncate text-sm sm:text-xs font-medium">
+                        {locationName}
+                      </p>
                       <p className="font-mono text-xs sm:text-[10px] text-muted-foreground">
-                        {latitude.toFixed(4)}°N, {Math.abs(longitude).toFixed(4)}°W
+                        {latitude.toFixed(4)}°N,{" "}
+                        {Math.abs(longitude).toFixed(4)}°W
                       </p>
                     </div>
                   </div>
@@ -221,24 +259,39 @@ function RainPredictionPage() {
               <CardContent className="min-h-0 flex-1">
                 <Tabs defaultValue="search" className="flex h-full flex-col">
                   <TabsList className="grid w-full shrink-0 grid-cols-3 h-auto">
-                    <TabsTrigger value="search" className="text-xs sm:text-sm py-2 sm:py-1.5">
+                    <TabsTrigger
+                      value="search"
+                      className="text-xs sm:text-sm py-2 sm:py-1.5"
+                    >
                       <Search className="mr-1 h-4 w-4 sm:h-3 sm:w-3" />
                       <span className="hidden sm:inline">Search</span>
                     </TabsTrigger>
-                    <TabsTrigger value="map" className="text-xs sm:text-sm py-2 sm:py-1.5">
+                    <TabsTrigger
+                      value="map"
+                      className="text-xs sm:text-sm py-2 sm:py-1.5"
+                    >
                       <Map className="mr-1 h-4 w-4 sm:h-3 sm:w-3" />
                       <span className="hidden sm:inline">Map</span>
                     </TabsTrigger>
-                    <TabsTrigger value="coordinates" className="text-xs sm:text-sm py-2 sm:py-1.5">
+                    <TabsTrigger
+                      value="coordinates"
+                      className="text-xs sm:text-sm py-2 sm:py-1.5"
+                    >
                       <Navigation className="mr-1 h-4 w-4 sm:h-3 sm:w-3" />
                       <span className="hidden sm:inline">Coords</span>
                     </TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="search" className="relative mt-4 flex-1 space-y-4">
+                  <TabsContent
+                    value="search"
+                    className="relative mt-4 flex-1 space-y-4"
+                  >
                     <div className="space-y-3">
                       <div>
-                        <Label htmlFor="search-input" className="text-sm sm:text-sm">
+                        <Label
+                          htmlFor="search-input"
+                          className="text-sm sm:text-sm"
+                        >
                           Search for a location
                         </Label>
                         <p className="mb-2 text-xs sm:text-xs text-muted-foreground">
@@ -251,7 +304,9 @@ function RainPredictionPage() {
                               placeholder="e.g., New York, NY"
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
-                              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                              onKeyDown={(e) =>
+                                e.key === "Enter" && handleSearch()
+                              }
                               className="text-sm h-11 sm:h-10"
                             />
                             <Button
@@ -275,7 +330,9 @@ function RainPredictionPage() {
                                   >
                                     <div className="flex items-start gap-2">
                                       <MapPin className="mt-0.5 h-4 w-4 sm:h-3 sm:w-3 shrink-0 text-muted-foreground" />
-                                      <span className="line-clamp-2">{result.display_name}</span>
+                                      <span className="line-clamp-2">
+                                        {result.display_name}
+                                      </span>
                                     </div>
                                   </button>
                                 ))}
@@ -286,20 +343,30 @@ function RainPredictionPage() {
                       </div>
                       {locationName && (
                         <div className="rounded-md bg-muted p-3 sm:p-2">
-                          <p className="text-sm sm:text-xs font-medium">Selected Location:</p>
-                          <p className="text-sm sm:text-xs text-muted-foreground">{locationName}</p>
+                          <p className="text-sm sm:text-xs font-medium">
+                            Selected Location:
+                          </p>
                           <p className="text-sm sm:text-xs text-muted-foreground">
-                            {latitude.toFixed(4)}°N, {Math.abs(longitude).toFixed(4)}°W
+                            {locationName}
+                          </p>
+                          <p className="text-sm sm:text-xs text-muted-foreground">
+                            {latitude.toFixed(4)}°N,{" "}
+                            {Math.abs(longitude).toFixed(4)}°W
                           </p>
                         </div>
                       )}
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="map" className="mt-4 flex-1 space-y-3 overflow-hidden">
+                  <TabsContent
+                    value="map"
+                    className="mt-4 flex-1 space-y-3 overflow-hidden"
+                  >
                     <div className="flex h-full flex-col space-y-3">
                       <div className="flex shrink-0 items-center justify-between">
-                        <Label className="text-sm">Click on the map to select a location</Label>
+                        <Label className="text-sm">
+                          Click on the map to select a location
+                        </Label>
                         <Button
                           variant="outline"
                           size="sm"
@@ -319,27 +386,39 @@ function RainPredictionPage() {
                       </div>
                       {(latitude !== 0 || longitude !== 0) && (
                         <div className="shrink-0 rounded-md border bg-muted/50 p-4 sm:p-3">
-                          <p className="text-sm font-medium text-muted-foreground">Selected Coordinates:</p>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Selected Coordinates:
+                          </p>
                           <p className="font-mono text-sm">
-                            {latitude.toFixed(4)}°N, {Math.abs(longitude).toFixed(4)}°W
+                            {latitude.toFixed(4)}°N,{" "}
+                            {Math.abs(longitude).toFixed(4)}°W
                           </p>
                           {isFetchingLocation && (
-                            <p className="mt-1 text-xs text-muted-foreground">Loading location...</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Loading location...
+                            </p>
                           )}
                           {locationName && !isFetchingLocation && (
-                            <p className="mt-1 text-xs text-muted-foreground">{locationName}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {locationName}
+                            </p>
                           )}
                         </div>
                       )}
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="coordinates" className="mt-4 space-y-4 overflow-y-auto">
+                  <TabsContent
+                    value="coordinates"
+                    className="mt-4 space-y-4 overflow-y-auto"
+                  >
                     <div className="space-y-3 sm:space-y-2">
                       <Label htmlFor="latitude" className="text-sm font-medium">
                         Latitude
                       </Label>
-                      <p className="text-xs text-muted-foreground">North-South (25.06° to 52.94°N)</p>
+                      <p className="text-xs text-muted-foreground">
+                        North-South (25.06° to 52.94°N)
+                      </p>
                       <Input
                         id="latitude"
                         type="number"
@@ -365,10 +444,15 @@ function RainPredictionPage() {
                     </div>
 
                     <div className="space-y-3 sm:space-y-2">
-                      <Label htmlFor="longitude" className="text-sm font-medium">
+                      <Label
+                        htmlFor="longitude"
+                        className="text-sm font-medium"
+                      >
                         Longitude
                       </Label>
-                      <p className="text-xs text-muted-foreground">East-West (124.94°W to 67.06°W)</p>
+                      <p className="text-xs text-muted-foreground">
+                        East-West (124.94°W to 67.06°W)
+                      </p>
                       <Input
                         id="longitude"
                         type="number"
@@ -386,7 +470,9 @@ function RainPredictionPage() {
                           max={-67.0625}
                           step={0.0001}
                           value={longitude}
-                          onChange={(e) => handleLongitudeChange(e.target.value)}
+                          onChange={(e) =>
+                            handleLongitudeChange(e.target.value)
+                          }
                           className="styled-slider w-full"
                           aria-label="Longitude slider"
                         />
@@ -395,10 +481,18 @@ function RainPredictionPage() {
 
                     {(latitude !== 0 || longitude !== 0) && (
                       <div className="rounded-md border bg-muted/50 p-3 sm:p-2">
-                        <p className="text-sm font-medium text-muted-foreground">Location:</p>
-                        {isFetchingLocation && <p className="text-sm text-muted-foreground">Loading location...</p>}
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Location:
+                        </p>
+                        {isFetchingLocation && (
+                          <p className="text-sm text-muted-foreground">
+                            Loading location...
+                          </p>
+                        )}
                         {locationName && !isFetchingLocation && (
-                          <p className="text-sm text-muted-foreground">{locationName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {locationName}
+                          </p>
                         )}
                       </div>
                     )}
@@ -448,7 +542,9 @@ function RainPredictionPage() {
           <div className="flex h-full flex-col overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:overflow-hidden">
             <Card className="flex h-full flex-col overflow-hidden">
               <CardHeader className="shrink-0 pb-3 sm:pb-3">
-                <CardTitle className="text-base sm:text-lg">Prediction Results</CardTitle>
+                <CardTitle className="text-base sm:text-lg">
+                  Prediction Results
+                </CardTitle>
                 <CardDescription className="text-xs sm:text-xs">
                   Rain forecast for your selected location and date
                 </CardDescription>
@@ -475,9 +571,13 @@ function RainPredictionPage() {
                         )}
                         <div>
                           <h3 className="text-xl sm:text-xl font-bold">
-                            {prediction.p_rain > 0.5 ? "Rain Expected" : "No Rain Expected"}
+                            {prediction.p_rain > 0.5
+                              ? "Rain Expected"
+                              : "No Rain Expected"}
                           </h3>
-                          <p className="text-xs text-muted-foreground">{formatDate(date)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(date)}
+                          </p>
                         </div>
                       </div>
                       <div className="rounded-md bg-background/50 p-3">
@@ -488,7 +588,10 @@ function RainPredictionPage() {
                               <span className="font-bold text-blue-600 dark:text-blue-400">
                                 {(prediction.p_rain * 100).toFixed(1)}%
                               </span>{" "}
-                              chance of rain at <span className="font-semibold">{locationName || "this location"}</span>
+                              chance of rain at{" "}
+                              <span className="font-semibold">
+                                {locationName || "this location"}
+                              </span>
                               . If it rains, expect approximately{" "}
                               <span className="font-bold text-blue-600 dark:text-blue-400">
                                 {prediction.amount_if_rain_mm.toFixed(2)} mm
@@ -497,9 +600,15 @@ function RainPredictionPage() {
                             </>
                           ) : (
                             <>
-                              Only a <span className="font-bold">{(prediction.p_rain * 100).toFixed(1)}%</span> chance
-                              of rain at <span className="font-semibold">{locationName || "this location"}</span>. Clear
-                              skies expected.
+                              Only a{" "}
+                              <span className="font-bold">
+                                {(prediction.p_rain * 100).toFixed(1)}%
+                              </span>{" "}
+                              chance of rain at{" "}
+                              <span className="font-semibold">
+                                {locationName || "this location"}
+                              </span>
+                              . Clear skies expected.
                             </>
                           )}
                         </p>
@@ -512,16 +621,22 @@ function RainPredictionPage() {
                           <div className="rounded-full bg-primary/10 p-1.5">
                             <Cloud className="h-4 w-4 text-primary" />
                           </div>
-                          <span className="text-xs font-medium text-muted-foreground">Chance of any rain</span>
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Chance of any rain
+                          </span>
                         </div>
-                        <div className="text-2xl font-bold">{(prediction.p_rain * 100).toFixed(1)}%</div>
+                        <div className="text-2xl font-bold">
+                          {(prediction.p_rain * 100).toFixed(1)}%
+                        </div>
                         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                           <div
                             className="h-full bg-primary transition-all"
                             style={{ width: `${prediction.p_rain * 100}%` }}
                           />
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">Probability of precipitation</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Probability of precipitation
+                        </p>
                       </div>
 
                       <div className="rounded-lg border bg-card p-4 shadow-sm">
@@ -529,23 +644,37 @@ function RainPredictionPage() {
                           <div className="rounded-full bg-blue-500/10 p-1.5">
                             <Droplets className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           </div>
-                          <span className="text-xs font-medium text-muted-foreground">Total for the day</span>
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Total for the day
+                          </span>
                         </div>
-                        <div className="text-2xl font-bold">{prediction.amount_if_rain_mm.toFixed(2)} mm</div>
+                        <div className="text-2xl font-bold">
+                          {prediction.amount_if_rain_mm.toFixed(2)} mm
+                        </div>
                         <div className="mt-2 flex items-end gap-1">
                           {[...Array(5)].map((_, i) => (
                             <div
                               key={i}
                               className={`w-full rounded-t ${
-                                i < prediction.amount_if_rain_mm / 10 ? "bg-blue-500" : "bg-muted"
+                                i < prediction.amount_if_rain_mm / 10
+                                  ? "bg-blue-500"
+                                  : "bg-muted"
                               }`}
                               style={{
-                                height: `${Math.min(24, ((prediction.amount_if_rain_mm / 50) * 24 * (i + 1)) / 5)}px`,
+                                height: `${Math.min(
+                                  24,
+                                  ((prediction.amount_if_rain_mm / 50) *
+                                    24 *
+                                    (i + 1)) /
+                                    5
+                                )}px`,
                               }}
                             />
                           ))}
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">If it rains at all</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          If it rains at all
+                        </p>
                       </div>
 
                       <div className="rounded-lg border bg-card p-4 shadow-sm">
@@ -553,23 +682,37 @@ function RainPredictionPage() {
                           <div className="rounded-full bg-blue-500/10 p-1.5">
                             <Droplets className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           </div>
-                          <span className="text-xs font-medium text-muted-foreground">Average to plan for</span>
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Average to plan for
+                          </span>
                         </div>
-                        <div className="text-2xl font-bold">{prediction.expected_mm.toFixed(2)} mm</div>
+                        <div className="text-2xl font-bold">
+                          {prediction.expected_mm.toFixed(2)} mm
+                        </div>
                         <div className="mt-2 flex items-end gap-1">
                           {[...Array(5)].map((_, i) => (
                             <div
                               key={i}
                               className={`w-full rounded-t ${
-                                i < prediction.expected_mm / 10 ? "bg-blue-500" : "bg-muted"
+                                i < prediction.expected_mm / 10
+                                  ? "bg-blue-500"
+                                  : "bg-muted"
                               }`}
                               style={{
-                                height: `${Math.min(24, ((prediction.expected_mm / 50) * 24 * (i + 1)) / 5)}px`,
+                                height: `${Math.min(
+                                  24,
+                                  ((prediction.expected_mm / 50) *
+                                    24 *
+                                    (i + 1)) /
+                                    5
+                                )}px`,
                               }}
                             />
                           ))}
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">Probability × Amount</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Probability × Amount
+                        </p>
                       </div>
                     </div>
 
@@ -578,9 +721,12 @@ function RainPredictionPage() {
                         <MapPin className="h-3 w-3" />
                         Location Details
                       </div>
-                      <p className="text-xs">{locationName || "Unknown location"}</p>
+                      <p className="text-xs">
+                        {locationName || "Unknown location"}
+                      </p>
                       <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                        {latitude.toFixed(4)}°N, {Math.abs(longitude).toFixed(4)}°W
+                        {latitude.toFixed(4)}°N,{" "}
+                        {Math.abs(longitude).toFixed(4)}°W
                       </p>
                     </div>
                   </div>
@@ -590,7 +736,9 @@ function RainPredictionPage() {
                       <div className="mx-auto mb-4 rounded-full bg-muted p-6">
                         <Cloud className="h-12 w-12 text-muted-foreground/50" />
                       </div>
-                      <p className="mb-2 text-base font-semibold">No prediction yet</p>
+                      <p className="mb-2 text-base font-semibold">
+                        No prediction yet
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         Select a location and date, then click "Predict Rain"
                       </p>
@@ -606,7 +754,9 @@ function RainPredictionPage() {
       <Dialog open={isMapDialogOpen} onOpenChange={setIsMapDialogOpen}>
         <DialogContent className="h-[98vh] max-w-[98vw] p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">Select Location on Map</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
+              Select Location on Map
+            </DialogTitle>
           </DialogHeader>
           <div className="flex h-[calc(100%-4rem)] flex-col gap-4">
             <div className="min-h-0 flex-1">
@@ -681,19 +831,31 @@ function RainPredictionPage() {
                 <p className="text-sm font-medium">
                   {latitude.toFixed(4)}°N, {Math.abs(longitude).toFixed(4)}°W
                 </p>
-                {isFetchingLocation && <p className="text-xs text-muted-foreground">Loading location...</p>}
-                {locationName && !isFetchingLocation && <p className="text-xs text-muted-foreground">{locationName}</p>}
+                {isFetchingLocation && (
+                  <p className="text-xs text-muted-foreground">
+                    Loading location...
+                  </p>
+                )}
+                {locationName && !isFetchingLocation && (
+                  <p className="text-xs text-muted-foreground">
+                    {locationName}
+                  </p>
+                )}
               </div>
             )}
 
-            <Button onClick={() => setIsMapDialogOpen(false)} size="lg" className="w-full shrink-0 h-12 sm:h-11">
+            <Button
+              onClick={() => setIsMapDialogOpen(false)}
+              size="lg"
+              className="w-full shrink-0 h-12 sm:h-11"
+            >
               Confirm Location
             </Button>
           </div>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
 
 export default function App() {
@@ -701,5 +863,5 @@ export default function App() {
     <ThemeProvider defaultTheme="system" enableSystem>
       <RainPredictionPage />
     </ThemeProvider>
-  )
+  );
 }
