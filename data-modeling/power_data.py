@@ -531,7 +531,7 @@ class DatasetBundle:
 
 def get_dataset(
     years: int = 5,
-    bbox: Dict[str, float] = BBOX_TORONTO_SMALL,
+    bbox: Dict[str, float] = BBOX_TORONTO_CITY,
     target_param: str = TARGET_PARAM,
     extra_params: List[str] = EXTRA_PARAMS,
     drop_allnull_climo: bool = True,
