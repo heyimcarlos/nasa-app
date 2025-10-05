@@ -1,0 +1,14 @@
+# Python bytecode / caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Notebooks’ temp
+.ipynb_checkpoints/
+
+# POWER data caches and model artifacts
+nasa/nasa-app/data-modeling/power_cache/
+nasa/nasa-app/data-modeling/artifacts/
+*.nc
+*.zarr
+*.pkl
