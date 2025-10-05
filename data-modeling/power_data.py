@@ -259,28 +259,22 @@ def collect_paths_for_param(
 # -----------------
 
 def _engine() -> str:
-    """Choose the best xarray backend: 'netcdf4' if available; otherwise 'scipy'."""
-    engines = set(xr.backends.list_engines())
-    return "netcdf4" if "netcdf4" in engines else "scipy"
+    """Standardize on the SciPy backend for maximum portability."""
+    return "scipy"
 
 
 def open_mosaic(paths: List[Path], chunks: Optional[str] = "auto") -> xr.Dataset:
     """Open many NetCDF files and merge by coordinates into a single xarray Dataset.
-
-    If dask is available and backend isn't scipy, uses lazy chunking (`chunks="auto"`).
     """
-    engine = _engine()
-    kwargs = dict(
-        engine=engine,
+    return xr.open_mfdataset(
+        [str(p) for p in paths],
+        engine=_engine(),
         combine="by_coords",
         data_vars="minimal",
         coords="minimal",
         compat="override",
         join="outer",
     )
-    if chunks and engine != "scipy":
-        return xr.open_mfdataset([str(p) for p in paths], chunks=chunks, **kwargs)
-    return xr.open_mfdataset([str(p) for p in paths], **kwargs)
 
 
 def ensure_unique_sorted_grid(ds: xr.Dataset, lat="lat", lon="lon") -> xr.Dataset:
@@ -333,40 +327,29 @@ def open_or_build_mosaic(
     start: str,
     end: str,
     tile_span: float = 10.0,
-    prefer: str = "zarr",
 ) -> xr.Dataset:
-    """Open a single on-disk mosaic (Zarr or NetCDF) for `param`, building it if missing.
+    """Open a single on-disk mosaic (NetCDF) for `param`, building it if missing.
 
-    - If a Zarr/NetCDF mosaic already exists, this is a very fast open.
-    - Otherwise, it collects tile/year files, stitches, writes to disk, and reopens lazily.
+    - If a NetCDF mosaic already exists, this is a fast open.
+    - Otherwise, it collects tile/year files, stitches, writes to NetCDF, and reopens.
     """
-    use_zarr = _zarr_available() and (prefer.lower() == "zarr")
     key = _mosaic_key(param, bbox, start, end)
 
-    if use_zarr:
-        target = MOSAICS_DIR / f"{key}.zarr"
-        if target.exists():
-            return xr.open_zarr(target, chunks="auto")
-    else:
-        target = MOSAICS_DIR / f"{key}.nc"
-        if target.exists():
-            engine = _engine()
-            return xr.open_dataset(target, engine=engine)
+    # Try cached NetCDF mosaic
+    target = MOSAICS_DIR / f"{key}.nc"
+    if target.exists():
+        return xr.open_dataset(target, engine=_engine())
 
     # Build from tile cache
     paths = collect_paths_for_param(param, bbox, start, end, tile_span)
-    ds = open_mosaic(paths, chunks="auto")
+    ds = open_mosaic(paths)
     lat, lon = guess_lat_lon_coords(ds)
     ds = ensure_unique_sorted_grid(ds, lat, lon)
 
-    # Write once, then reopen lazily
-    if use_zarr:
-        ds.to_zarr(target, mode="w")
-        return xr.open_zarr(target, chunks="auto")
-    else:
-        ds.to_netcdf(target)
-        engine = _engine()
-        return xr.open_dataset(target, engine=engine)
+    # Write NetCDF once, then reopen
+    ds.to_netcdf(target)
+    return xr.open_dataset(target, engine=_engine())
+
 
 # -----------------
 # Public API
@@ -383,7 +366,7 @@ def get_target_dataset(
 
     Uses the on-disk mosaic cache for fast subsequent loads; returns an xarray Dataset.
     """
-    ds = open_or_build_mosaic(target_param, bbox, start, end, tile_span, prefer="zarr")
+    ds = open_or_build_mosaic(target_param, bbox, start, end, tile_span)
     return ds
 
 
@@ -403,7 +386,7 @@ def get_climatology_dataset(
     """
     das = []
     for par in params:
-        dsp = open_or_build_mosaic(par, bbox, start, end, tile_span, prefer="zarr")
+        dsp = open_or_build_mosaic(par, bbox, start, end, tile_span)
         lat, lon = guess_lat_lon_coords(dsp)
         dsp = ensure_unique_sorted_grid(dsp, lat, lon)
         da = dsp[par]
