@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -41,6 +42,10 @@ TILES_DIR.mkdir(parents=True, exist_ok=True)
 
 MOSAICS_DIR = CACHE / "mosaics"
 MOSAICS_DIR.mkdir(parents=True, exist_ok=True)
+
+# POWER regional API hard limits
+MAX_REGIONAL_SPAN_DEG = 10.0  # each edge must be ≤ 10°
+MIN_REGIONAL_SPAN_DEG = 2.0   # each edge must be ≥ 2°
 
 # Global target & parameters (shared across models)
 TARGET_PARAM = "PRECTOTCORR"  # precipitation corrected (mm/day)
@@ -136,27 +141,44 @@ def year_slices(start_yyyymmdd: str, end_yyyymmdd: str) -> Iterable[Tuple[str, s
 # BBox tiling
 # -----------------
 
-def tile_bbox_no_overlap(bbox: Dict[str, float], max_span: float = 10.0, eps: float = 1e-6):
-    """Split a bbox into ≤ `max_span` degree tiles (lat & lon) using half-open intervals.
+def tile_bbox_no_overlap(bbox: Dict[str, float]):
+    """Split a bbox into tiles that satisfy POWER regional limits with no overlaps.
 
-    POWER regional endpoint restricts requests to ≤10° in both latitude and longitude.
-    This generator yields tiles that exactly cover the bbox without overlapping edges.
+    POWER /regional requires each request tile to be ≤10° and ≥2° on both axes.
+    We evenly split each axis so the final tile is never < 2°. If the overall
+    span on an axis is < 2°, we return a single interval on that axis (caller
+    should pad or use the point endpoint in that case).
     """
-    lat_min, lat_max = bbox["latitude_min"], bbox["latitude_max"]
-    lon_min, lon_max = bbox["longitude_min"], bbox["longitude_max"]
+    lat_min, lat_max = float(bbox["latitude_min"]), float(bbox["latitude_max"])
+    lon_min, lon_max = float(bbox["longitude_min"]), float(bbox["longitude_max"])
 
-    lat_edges = list(np.arange(lat_min, lat_max, max_span)) + [lat_max]
-    lon_edges = list(np.arange(lon_min, lon_max, max_span)) + [lon_max]
+    def edges(lo: float, hi: float) -> List[float]:
+        span = hi - lo
+        if span <= 0:
+            raise ValueError(f"Invalid bbox edge: {lo} … {hi}")
+        # Too small overall: return single segment; upstream may pad or switch endpoint
+        if span < (MIN_REGIONAL_SPAN_DEG - 1e-9):
+            return [round(lo, 6), round(hi, 6)]
+        # Smallest number of segments so each segment ≤ 10°
+        k = max(1, int(math.ceil(span / MAX_REGIONAL_SPAN_DEG)))
+        step = span / k  # even split ⇒ no <2° remainders when span ≥ 2°
+        # (With k=ceil(span/10), step ∈ [2°,10°] for any span ≥ 2°.)
+        es = [lo + i * step for i in range(k)]
+        es.append(hi)
+        es = [float(f"{e:.6f}") for e in es]
+        es[-1] = float(f"{hi:.6f}")
+        return es
+
+    lat_edges = edges(lat_min, lat_max)
+    lon_edges = edges(lon_min, lon_max)
 
     for i in range(len(lat_edges) - 1):
         for j in range(len(lon_edges) - 1):
-            up_lat = lat_edges[i + 1] if i == len(lat_edges) - 2 else lat_edges[i + 1] - eps
-            up_lon = lon_edges[j + 1] if j == len(lon_edges) - 2 else lon_edges[j + 1] - eps
             yield dict(
-                latitude_min=float(round(lat_edges[i], 6)),
-                latitude_max=float(round(up_lat, 6)),
-                longitude_min=float(round(lon_edges[j], 6)),
-                longitude_max=float(round(up_lon, 6)),
+                latitude_min=lat_edges[i],
+                latitude_max=lat_edges[i + 1],
+                longitude_min=lon_edges[j],
+                longitude_max=lon_edges[j + 1],
             )
 
 # -----------------
@@ -237,13 +259,13 @@ def fetch_tile_year_netcdf(
 
 
 def collect_paths_for_param(
-    param: str, bbox: Dict[str, float], start: str, end: str, tile_span: float = 10.0
+    param: str, bbox: Dict[str, float], start: str, end: str
 ) -> List[Path]:
     """Return the list of cached NetCDF paths for all (tiles × year-slices) for `param`.
 
     Ensures every required tile/year file exists locally by calling `fetch_tile_year_netcdf`.
     """
-    tiles = list(tile_bbox_no_overlap(bbox, max_span=tile_span))
+    tiles = list(tile_bbox_no_overlap(bbox))
     paths: List[Path] = []
     for ys, ye in year_slices(start, end):
         for tile in tiles:
@@ -313,7 +335,6 @@ def open_or_build_mosaic(
     bbox: Dict[str, float],
     start: str,
     end: str,
-    tile_span: float = 10.0,
 ) -> xr.Dataset:
     """Open a single on-disk mosaic (NetCDF) for `param`, building it if missing.
 
@@ -328,7 +349,7 @@ def open_or_build_mosaic(
         return xr.open_dataset(target, engine=_engine())
 
     # Build from tile cache
-    paths = collect_paths_for_param(param, bbox, start, end, tile_span)
+    paths = collect_paths_for_param(param, bbox, start, end)
     ds = open_mosaic(paths)
     lat, lon = guess_lat_lon_coords(ds)
     ds = ensure_unique_sorted_grid(ds, lat, lon)
@@ -346,14 +367,13 @@ def get_target_dataset(
     target_param: str,
     bbox: Dict[str, float],
     start: str,
-    end: str,
-    tile_span: float = 10.0,
+    end: str
 ) -> xr.Dataset:
     """Download (if needed) and open the daily target dataset (e.g., PRECTOTCORR).
 
     Uses the on-disk mosaic cache for fast subsequent loads; returns an xarray Dataset.
     """
-    ds = open_or_build_mosaic(target_param, bbox, start, end, tile_span)
+    ds = open_or_build_mosaic(target_param, bbox, start, end)
     return ds
 
 
@@ -363,7 +383,6 @@ def get_climatology_dataset(
     start: str,
     end: str,
     align_to: Optional[xr.Dataset] = None,
-    tile_span: float = 10.0,
 ) -> xr.Dataset:
     """Return a Dataset of daily climatologies for each parameter in `params`.
 
@@ -373,7 +392,7 @@ def get_climatology_dataset(
     """
     das = []
     for par in params:
-        dsp = open_or_build_mosaic(par, bbox, start, end, tile_span)
+        dsp = open_or_build_mosaic(par, bbox, start, end)
         lat, lon = guess_lat_lon_coords(dsp)
         dsp = ensure_unique_sorted_grid(dsp, lat, lon)
         da = dsp[par]
@@ -500,7 +519,6 @@ def get_dataset(
     target_param: str = TARGET_PARAM,
     extra_params: List[str] = EXTRA_PARAMS,
     drop_allnull_climo: bool = True,
-    tile_span: float = 10.0,
 ) -> DatasetBundle:
     """High-level entry point: build the shared dataset once for everyone.
 
@@ -521,8 +539,8 @@ def get_dataset(
     start, end = last_n_years_dates(years)
     print(f"Date window: {start} → {end} | bbox={bbox}")
 
-    ds = get_target_dataset(target_param, bbox, start, end, tile_span=tile_span)
-    ds_climo = get_climatology_dataset(extra_params, bbox, start, end, align_to=ds, tile_span=tile_span)
+    ds = get_target_dataset(target_param, bbox, start, end)
+    ds_climo = get_climatology_dataset(extra_params, bbox, start, end, align_to=ds)
 
     data = make_training_table(ds, ds_climo, target_var=target_param)
 
