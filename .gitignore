@@ -11,4 +11,3 @@ nasa/nasa-app/data-modeling/power_cache/
 nasa/nasa-app/data-modeling/artifacts/
 *.nc
 *.zarr
-*.pkl

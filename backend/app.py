@@ -35,16 +35,9 @@ ds = None
 ds_climo = None
 try:
     # Prefer MLP model bundle; fallback to baseline if needed
-    candidates = [
-        DM_DIR / 'artifacts/rain_model_v1.pkl',
-        DM_DIR / 'artifacts/mlp_rain_model.pkl',
-        DM_DIR / 'artifacts/model.pkl',
-    ]
+    pickle = DM_DIR / 'artifacts/mlp_rain_model.pkl'
     
-    print("Looking for model bundle in:", [str(p) for p in candidates])
-    
-    
-    model_path = next((p for p in candidates if p.exists()), None)
+    model_path = pickle if pickle.exists() else None
     if model_path is None:
         logging.error("No model bundle found in artifacts directory. Train and save a bundle first.")
     else:
