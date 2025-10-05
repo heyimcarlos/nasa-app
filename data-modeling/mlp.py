@@ -26,7 +26,6 @@ from common import (
     baseline_expected_mm as baseline_expected_mm_common,
     combined_expected_mm as combined_expected_mm_common,
 )
-from inference import predict_precip_mm as shared_predict_precip_mm 
 
 BASE_DIR = Path(__file__).resolve().parent              # → nasa-app/data-modeling
 ARTIFACTS_DIR = BASE_DIR / "artifacts"

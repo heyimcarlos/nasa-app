@@ -42,7 +42,6 @@ def predict_precip_mm(
     for v in ds_climo.data_vars:
         row[v] = float(cl[v].values)
 
-    import pandas as pd  # local import to avoid top-level dependency clashes
     X = pd.DataFrame([row])[X_cols]
     p = float(clf.predict_proba(X)[:, 1])
     amt = float(np.expm1(reg.predict(X)))
