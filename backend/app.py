@@ -23,10 +23,10 @@ app = Flask(__name__)
 CORS(app, resources={
     r"/api/*": {
         "origins": [
-            "http://localhost:5173/"  # Keep local development working
+            "http://localhost:5173",
         ],
         "methods": ["POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"]
+        "allow_headers": ["Content-Type", "Accept"]
     }
 })
 
@@ -57,6 +57,7 @@ try:
         logging.info("Datasets loaded for inference.")
 except Exception as e:
     logging.error(f"Error loading model bundle or datasets: {e}")
+
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
