@@ -197,14 +197,17 @@ function RainPredictionPage() {
         }
       );
       setPrediction(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Surface useful error details in dev
-      const status = error?.response?.status;
-      const payload = error?.response?.data;
+      const axiosError = error as {
+        response?: { status?: number; data?: unknown };
+      };
+      const status = axiosError?.response?.status;
+      const payload = axiosError?.response?.data;
       console.error(
         "Prediction error:",
         status,
-        payload || error?.message || error
+        payload || (error as Error)?.message || error
       );
       setPrediction(null);
     } finally {

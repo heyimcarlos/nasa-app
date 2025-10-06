@@ -2,19 +2,13 @@
 "use client";
 
 import React from "react";
-
-type Theme = "light" | "dark" | "system";
-
-type ThemeContextType = {
-  theme: Theme;
-  setTheme: (t: Theme) => void;
-};
-
-const ThemeContext = React.createContext<ThemeContextType | undefined>(undefined);
+import { ThemeContext, type Theme } from "./use-theme";
 
 function getSystemTheme(): "light" | "dark" {
   if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 function applyTheme(theme: Theme) {
@@ -47,7 +41,8 @@ export function ThemeProvider({
     if (!enableSystem) return;
     const m = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = () => {
-      const stored = (localStorage.getItem("theme") as Theme | null) ?? "system";
+      const stored =
+        (localStorage.getItem("theme") as Theme | null) ?? "system";
       if (stored === "system") applyTheme("system");
     };
     m.addEventListener?.("change", handler);
@@ -57,11 +52,7 @@ export function ThemeProvider({
   const setTheme = React.useCallback((t: Theme) => setThemeState(t), []);
   const value = React.useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
-}
-
-export function useTheme(): ThemeContextType {
-  const ctx = React.useContext(ThemeContext);
-  if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
-  return ctx;
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
 }
