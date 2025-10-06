@@ -44,10 +44,6 @@ export function InteractiveMap({
     return () => window.removeEventListener("resize", updateCanvasSize);
   }, [expandedMode]);
 
-  useEffect(() => {
-    drawMap();
-  }, [zoom, latitude, longitude, canvasDimensions, drawMap]);
-
   const drawMap = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -108,6 +104,10 @@ export function InteractiveMap({
 
     drawMarker(ctx, width, height);
   }, [zoom, latitude, longitude, canvasDimensions]);
+
+  useEffect(() => {
+    drawMap();
+  }, [drawMap]);
 
   const drawMarker = (
     ctx: CanvasRenderingContext2D,
